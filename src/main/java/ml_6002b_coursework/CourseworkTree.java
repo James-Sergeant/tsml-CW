@@ -28,6 +28,27 @@ public class CourseworkTree extends AbstractClassifier {
         this.attSplitMeasure = attSplitMeasure;
     }
 
+    public void setOptions(String options){
+        if(options.contains("informationGain")){
+            setAttSplitMeasure(new IGAttributeSplitMeasure());
+        }
+
+        if(options.contains("informationGainRatio")){
+            IGAttributeSplitMeasure measure = new IGAttributeSplitMeasure();
+            measure.setUseGain(true);
+            setAttSplitMeasure(measure);
+        }
+
+        if(options.contains("chiSquared")){
+            setAttSplitMeasure(new ChiSquaredAttributeSplitMeasure());
+        }
+
+        if(options.contains("gini")){
+            setAttSplitMeasure(new GiniAttributeSplitMeasure());
+        }
+
+    }
+
     /**
      * Sets the max depth for the classifier.
      *
