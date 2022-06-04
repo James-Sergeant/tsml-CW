@@ -14,8 +14,8 @@ public class AttributeMeasures {
         final int CLASS_COUNT = table[0].length; //How many outcomes i.e Islay Speyside
         final int ATTRIBUTE_COUNT = table.length; //Number of options i.e yes or no
 
-        int[] entropyArray = new int[ATTRIBUTE_COUNT];
-        int[] proportionArray = new int[ATTRIBUTE_COUNT];
+        double[] entropyArray = new double[ATTRIBUTE_COUNT];
+        double[] proportionArray = new double[ATTRIBUTE_COUNT];
 
         //1) Find the root node's entropy
         double rootEntropy = 0;
@@ -40,18 +40,36 @@ public class AttributeMeasures {
             rootEntropy += prob * logBase2(prob);
         }
 
+        //For each attribute i.e yes or no find the entropy
+        for (int attribNode = 0; attribNode < ATTRIBUTE_COUNT; attribNode++){
+            //Get class totals for the node.
+            int nodeClassTotal = 0;
+            for(int x: table[attribNode]){
+                nodeClassTotal += x;
+            }
 
+            //Find the Attribute probability for this node.
+            double[] attributeProbability = new double[CLASS_COUNT];
+            for(int classCount = 0; classCount<ATTRIBUTE_COUNT; classCount++){
+                attributeProbability[classCount] = (double) table[attribNode][classCount] / (double) nodeClassTotal;
+            }
 
+            double attributeEntropy = 0;
+            //Calculates the entropy for the attribute.
+            for (double probability: attributeProbability){
+                attributeEntropy += logBase2(probability) * probability;
+            }entropyArray[attribNode] = -1 * attributeEntropy;
 
+            proportionArray[attribNode] = (double) nodeClassTotal / (double) totalElementsInRootNode;
+        }
 
+        //Find the info gain
+        double infoGain = rootEntropy;
+        for(int attribute = 0; attribute < ATTRIBUTE_COUNT; attribute++){
+            infoGain -= proportionArray[attribute] * entropyArray[attribute];
+        }
 
-
-        //2) Find each node's
-            //1) Attribute Entropy
-            //2) Weighting
-            //3)
-
-        return 0.0d;
+        return infoGain;
     }
 
     /**
@@ -60,8 +78,13 @@ public class AttributeMeasures {
      * @param args the options for the attribute measure main
      */
     public static void main(String[] args) {
-        System.out.println(logBase2(0));
-        logBase2(4);
+        int[][] peatyContingencyTable = {
+                {4, 0}, // Yes (4 - islay, 0 - speyside)
+                {1, 5}  // No  (1 - islay, 5 - speyside)
+        };
+
+        double infoGain = measureInformationGain(peatyContingencyTable);
+        System.out.println(infoGain);
     }
 
 }
