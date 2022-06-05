@@ -3,7 +3,10 @@ package ml_6002b_coursework;
 import weka.classifiers.AbstractClassifier;
 import weka.core.*;
 
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.Random;
 
 /**
  * A basic decision tree classifier for use in machine learning coursework (6002B).
@@ -154,6 +157,9 @@ public class CourseworkTree extends AbstractClassifier {
          * @param data Instances to build the tree node with
          * @param depth the depth of the node in the tree
          */
+
+        private double mean = 0;
+
         void buildTree(Instances data, int depth) throws Exception {
             this.depth = depth;
 
@@ -169,7 +175,12 @@ public class CourseworkTree extends AbstractClassifier {
 
             // If we found an attribute to split on, create child nodes.
             if (bestSplit != null) {
-                Instances[] split = attSplitMeasure.splitData(data, bestSplit);
+                if(bestSplit.isNumeric()){
+                    mean = data.attributeStats(bestSplit.index()).numericStats.mean;
+                }
+                Instances[] split;
+                if(bestSplit.isNumeric()) split = attSplitMeasure.splitDataOnNumeric(data, bestSplit);
+                else split = attSplitMeasure.splitData(data, bestSplit);
                 children = new TreeNode[split.length];
 
                 // Create a child for each value in the selected attribute, and determine whether it is a leaf or not.
@@ -215,6 +226,10 @@ public class CourseworkTree extends AbstractClassifier {
             if (bestSplit == null) {
                 return leafDistribution;
             } else {
+                if(bestSplit.isNumeric()){
+                    if(inst.value(bestSplit) > mean) return children[0].distributionForInstance(inst);
+                    else return children[1].distributionForInstance(inst);
+                }
                 return children[(int) inst.value(bestSplit)].distributionForInstance(inst);
             }
         }
@@ -266,7 +281,59 @@ public class CourseworkTree extends AbstractClassifier {
      *
      * @param args the options for the classifier main
      */
-    public static void main(String[] args) {
-        System.out.println("Not Implemented.");
+    public static void main(String[] args) throws Exception {
+        runData("./src/main/java/ml_6002b_coursework/test_data/optdigits.arff");
+        runData("./src/main/java/ml_6002b_coursework/test_data/Chinatown.arff");
+    }
+
+    public static void runData(String file) throws Exception {
+        FileReader reader = new FileReader(file);
+        Instances data = new Instances(reader);
+        data.setClassIndex(data.numAttributes() -1);
+
+        //Split the data
+        data.randomize(new Random());
+        int trainingDataLength = (int) (0.6d * data.numInstances());
+        int testingDataLength = data.numInstances() - trainingDataLength;
+        Instances trainingData = new Instances(data, 0, trainingDataLength);
+        Instances testingData = new Instances(data, trainingDataLength, testingDataLength);
+
+        //IG
+        CourseworkTree igTree = new CourseworkTree();
+        igTree.setOptions("informationGain");
+        igTree.buildClassifier(trainingData);
+        //IG ratio
+        CourseworkTree igRatioTree = new CourseworkTree();
+        igRatioTree.setOptions("informationGainRatio");
+        igRatioTree.buildClassifier(trainingData);
+        //Chi
+        CourseworkTree chiTree = new CourseworkTree();
+        chiTree.setOptions("chiSquared");
+        chiTree.buildClassifier(trainingData);
+        //Gini
+        CourseworkTree giniTree = new CourseworkTree();
+        giniTree.setOptions("gini");
+        giniTree.buildClassifier(trainingData);
+
+        int igCount = 0, igRatioCount = 0, chiCount = 0, giniCount = 0;
+
+        for(Instance i: testingData){
+            if(igTree.classifyInstance(i) == i.classValue()) igCount++;
+            if(igRatioTree.classifyInstance(i) == i.classValue()) igRatioCount++;
+            if(chiTree.classifyInstance(i) == i.classValue()) chiCount++;
+            if(giniTree.classifyInstance(i) == i.classValue()) giniCount++;
+        }
+
+        double igAccuracy = (double) igCount/(double) testingData.numInstances(),
+                igRatioAccuracy = (double) igRatioCount/(double) testingData.numInstances(),
+                chiAccuracy = (double) chiCount/(double) testingData.numInstances(),
+                giniAccuracy = (double) giniCount/(double) testingData.numInstances();
+
+        System.out.println(
+                "DT using measure Info Gain on "+data.relationName()+" problem has test accuracy = "+igAccuracy*100+"%\n" +
+                "DT using measure Info Gain Ratio on "+data.relationName()+" problem has test accuracy = "+igRatioAccuracy*100+"%\n" +
+                "DT using measure Chi on "+data.relationName()+" problem has test accuracy = "+chiAccuracy*100+"%\n" +
+                "DT using measure Gini Gain on "+data.relationName()+" problem has test accuracy = "+giniAccuracy*100+"%\n"
+        );
     }
 }
